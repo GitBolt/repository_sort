@@ -10,8 +10,8 @@ repos = [i for i in repos.REPOS.split("\n") if "https" in i]
 token = github_key
 gh = Github(token)
 
-jsLibs = ["@solana/web3.js", "@solana/spl-token", "@project-serum/anchor", "francium-sdk", "anchor-lang", 'anchor-spl', 'spl-token', 'solana-program', "solana", "metaplex"]
-otherLibs = ["web3.js: ", "ethers.js", "solidity", "ethereum", "polygon", "matic", "hardhat", "ethers", "cardano", "tezos"]
+jsLibs = ["@solana/web3.js", "@metaplex-foundation", "@solana/spl-token", "@project-serum/anchor", "francium-sdk", "anchor-lang", 'anchor-spl', 'spl-token', 'solana-program', "solana", "metaplex"]
+otherLibs = ['"web3.js',  '"web3', "ethers.js", "solidity", "ethereum",  "cardano", "tezos", "polygon", "matic", "hardhat", "ethers", "monero", "bitcoin", "eth-", "metamask", "walletconnect"]
 
 client = pygsheets.authorize(service_account_file="cred.json")
 
@@ -21,7 +21,8 @@ spreadsht = client.open("Solana Repo Audit [Bolt]")
 # opens a worksheet by its name/title
 worksht = spreadsht.worksheet("title", "SolanaRepos")
 
-continue_num = 0
+continue_num = 516
+
 
 for idx, repo in enumerate(repos[continue_num:]):
     given_type = None
@@ -35,15 +36,17 @@ for idx, repo in enumerate(repos[continue_num:]):
 
     if (repoData):
         content = repoData.get_contents("")
-        if len([c for c in content if c.name in ["package.json", "Cargo.toml"]]) == 0:
-            print("Digging into folders...")
-            for i in content:
-                if i.type == "dir":
-                    new_content = repoData.get_contents(i.path)
-
+        for i in content:
+            if i.type == "dir":
+                new_content = repoData.get_contents(i.path)
+                if len([c for c in new_content if c.name in ["package.json", "Cargo.toml"]]):
                     content.extend(new_content)
-                    if len([c for c in new_content if c.name in ["package.json", "Cargo.toml"]]):
-                        break
+                for i2 in new_content:
+                    if i2.type == "dir":
+                        new_content2 = repoData.get_contents(i2.path)
+                        if len([c for c in new_content2 if c.name in ["package.json", "Cargo.toml"]]):
+                            content.extend(new_content2)
+
 
             if len([c for c in content if c.name in ["package.json", "Cargo.toml"]]) == 0:
                 print("Still not enough, just checking for folder name then...")
@@ -62,21 +65,25 @@ for idx, repo in enumerate(repos[continue_num:]):
             toml = [c for c in content if c.name == "Cargo.toml"]
             readme = [c for c in content if c.name == "README.md"]
         
+            
+            found_files = []
             if package:
-                print("Checking package.json")
-            elif toml:
-                print("Checking Cargo.toml")
-            else:
-                print("Nothing found.")
+                found_files.append("package.json")
+            if toml:
+                found_files.append("Cargo.toml")
             if readme:
-                print("Readme available")
+                found_files.append("README.md")
+
+            if not found_files:
+                print("Nothing found.")
+            else:
+                print(f"Checking {', '.join(found_files)}")
 
             isSolFromPackage = len(package) > 0 and any(ext in package[0].decoded_content.decode('utf-8') for ext in jsLibs)
             isSolFromCargo = len(toml) > 0 and any(ext in toml[0].decoded_content.decode('utf-8') for ext in jsLibs)
             
             # Only used when nothing works
             isSolFromReadme = len(readme) > 0 and any(ext in readme[0].decoded_content.decode('utf-8') for ext in jsLibs)
-            isOtherFromReadme = len(readme) > 0 and any(ext in readme[0].decoded_content.decode('utf-8') for ext in otherLibs)
 
             # Final check
             isSol = isSolFromPackage or isSolFromCargo
@@ -98,10 +105,6 @@ for idx, repo in enumerate(repos[continue_num:]):
             elif isSolFromReadme:
                 print("SOL [Not trusty]")
                 given_type = "sol"
-
-            elif isOtherFromReadme:
-                print("Multi [Not Trusty]")
-                given_type = "multi"
             
             else:
                 given_type = "invalid"
