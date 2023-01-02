@@ -1,2 +1,4 @@
 __pycache__
 .env
+cred.json
+github_key.py

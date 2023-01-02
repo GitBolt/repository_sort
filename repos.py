@@ -998,3 +998,5 @@ https://github.com/Bi-Mars/solana-counter-test--001
 https://github.com/cleon30/Anchor-Counter
 https://github.com/ArtemLakhurov/bitorbit-google-auth
 """
+
+repoList = REPOS.split("\n")
