@@ -12,7 +12,9 @@ def calculate_accuracy(file1, file2):
   correct = 0
   total = 0
   for row1, row2 in zip(rows1, rows2):
-    print(row1["Type"], row2["Type"])
+
+    if (row1["Type"] != row2["Type"]):
+        print(row1["Type"], row2["Type"], row1["RepoURL"])
     total += 1
     if row1['RepoURL'] == row2['RepoURL'] and row1['Type'] == row2['Type']:
       correct += 1
