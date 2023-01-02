@@ -2,35 +2,29 @@
 
 from github import Github
 import os
-import base64
 import time
 import repos
+import pygsheets
 
 repos = [i for i in repos.REPOS.split("\n") if "https" in i]
 
 token = "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"
 gh = Github(token)
 
-jsLibs = ["@solana/web3.js", "@solana/spl-token", "@project-serum/anchor", "anchor-lang", 'anchor-spl', 'spl-token', 'solana-program']
-otherLibs = ["web3.js: ", "ethers.js", "solidity", "ethereum", "polygon", "matic", "hardhat", "ethers"]
+jsLibs = ["@solana/web3.js", "@solana/spl-token", "@project-serum/anchor", "anchor-lang", 'anchor-spl', 'spl-token', 'solana-program', "solana"]
+otherLibs = ["web3.js: ", "ethers.js", "solidity", "ethereum", "polygon", "matic", "hardhat", "ethers", "cardano", "tezos"]
 
-
-# Importing required library
-import pygsheets
-
-# Create the Client
 client = pygsheets.authorize(service_account_file="cred.json")
 
-# opens a spreadsheet by its name/title
 spreadsht = client.open("Solana Repo Audit [Bolt]")
 
-# opens a worksheet by its name/title
 worksht = spreadsht.worksheet("title", "SolanaRepos")
 
+continue_num = 33
 
-for idx, repo in enumerate(repos):
+for idx, repo in enumerate(repos[continue_num:]):
     given_type = None
-    print("Checking: ", repo, idx)
+    print("Checking: ", repo, idx + continue_num)
 
     repoData = None
     try:
@@ -67,11 +61,11 @@ for idx, repo in enumerate(repos):
             else:
                 print("Nothing found.")
 
-    
-            isSolFromPackage = len(package) > 0 and any(ext in base64.b64decode(package[0].content).decode('utf-8') for ext in jsLibs)
-            isSolFromCargo = len(toml) > 0 and any(ext in base64.b64decode(toml[0].content).decode('utf-8') for ext in jsLibs)
+
+            isSolFromPackage = len(package) > 0 and any(ext in package[0].decoded_content.decode('utf-8') for ext in jsLibs)
+            isSolFromCargo = len(toml) > 0 and any(ext in toml[0].decoded_content.decode('utf-8') for ext in jsLibs)
             isSol = isSolFromPackage or isSolFromCargo
-            isOtherChain = len(package) > 0 and any(ext in base64.b64decode(package[0].content).decode('utf-8') for ext in otherLibs)
+            isOtherChain = len(package) > 0 and any(ext in package[0].decoded_content.decode('utf-8') for ext in otherLibs)
 
             if isSol and not isOtherChain:
                 print("Pure Solana")
@@ -79,7 +73,7 @@ for idx, repo in enumerate(repos):
 
             elif isSol and isOtherChain:
                 print("Multi Chain")
-                given_type = "sol"
+                given_type = "multi"
 
             elif isOtherChain and not isSol:
                 print("Different chain")
@@ -90,15 +84,22 @@ for idx, repo in enumerate(repos):
 
 
 
-    row = "B" + str(idx + 2)
-    print("Updating column...", row)
+    row = "B" + str(idx + continue_num + 2)
     if given_type == "sol":
         worksht.update_values(row,[["Solana"]])# Adding row values
+        print("Updating column ", row, " with ", "Solana")
+        
     elif given_type == "multi":
         worksht.update_values(row,[["Multi"]])# Adding row values
+        print("Updating column ", row, " with ", "Multi")
+
     elif given_type == "private":
         worksht.update_values(row,[["NA"]])# Adding row values
+        print("Updating column ", row, " with ", "NA")
+
     else:
         worksht.update_values(row,[["Invalid"]])# Adding row values
+        print("Updating column ", row, " with ", "Invalid")
+
     print("\n")
     time.sleep(1)
