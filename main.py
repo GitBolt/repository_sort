@@ -8,8 +8,7 @@ import repos
 repos = [i for i in repos.REPOS.split("\n") if "https" in i]
 
 # Initialize the Github client
-token = github_key
-gh = Github(token)
+gh = Github(github_key)
 
 # List of library names to check for in package.json and Cargo.toml
 jsLibs = ["@solana/web3.js", "@metaplex-foundation", "@solana/spl-token",
