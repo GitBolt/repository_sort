@@ -26,18 +26,20 @@ spreadsht = client.open("Solana Repo Audit [Bolt]")
 worksht = spreadsht.worksheet("title", "SolanaRepos")
 
 # Start at the specified repo index
-continue_num = 0
+continue_num = 6
 
 for idx, repo in enumerate(repos[continue_num:]):
     given_type = None
-    print("Checking: ", repo, idx + continue_num)
+    repoData = None
 
     # Get the repo data or mark it as private if it fails
     try:
         repoData = gh.get_repo(repo.split("github.com/")[1])
     except:
         given_type = "private"
-    
+
+    print("Checking: ", repo, idx + continue_num, given_type)
+
     # If the repo is not private, get the contents
     if repoData:
         content = repoData.get_contents("")
@@ -85,25 +87,23 @@ for idx, repo in enumerate(repos[continue_num:]):
                 else:
                     given_type = "Invalid"                    
 
-        # Update the worksheet with the repo and its type
-        row = "B" + str(idx + continue_num + 2)
-        if given_type == "sol":
-            worksht.update_values(row,[["Solana"]])# Adding row values
-            print("Updating column ", row, " with ", "Solana")
-            
-        elif given_type == "multi":
-            worksht.update_values(row,[["Multi"]])# Adding row values
-            print("Updating column ", row, " with ", "Multi")
-
-        elif given_type == "private":
-            worksht.update_values(row,[["Private"]])# Adding row values
-            print("Updating column ", row, " with ", "Private")
-
-        else:
-            worksht.update_values(row,[["Invalid"]])# Adding row values
-            print("Updating column ", row, " with ", "NA")
+    # Update the worksheet with the repo and its type
+    row = "B" + str(idx + continue_num + 2)
+    if given_type == "sol":
+        worksht.update_values(row,[["Solana"]])# Adding row values
+        print("Updating column ", row, " with ", "Solana")
         
-        # Sleep to avoid rate limiting
-        time.sleep(1)
+    elif given_type == "multi":
+        worksht.update_values(row,[["Multi"]])# Adding row values
+        print("Updating column ", row, " with ", "Multi")
+
+    elif given_type == "private":
+        worksht.update_values(row,[["Private"]])# Adding row values
+        print("Updating column ", row, " with ", "Private")
+
+    else:
+        worksht.update_values(row,[["Invalid"]])# Adding row values
+        print("Updating column ", row, " with ", "NA")
+    
 
 print("Finished!")
