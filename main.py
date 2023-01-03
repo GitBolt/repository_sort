@@ -65,70 +65,71 @@ worksht = spreadsht.worksheet("title", "SolanaRepos")
 
 # Start at the specified repo index
 continue_num = 0
-
-for idx, repo in enumerate(repos[continue_num:]):
+def identify(repo_url: str) -> str:
     given_type = None
     repoData = None
 
     # Get the repo data or mark it as private if it fails
     try:
-        repoData = gh.get_repo(repo.split("github.com/")[1])
+        repoData = gh.get_repo(repo_url.split("github.com/")[1])
     except Exception:
         given_type = "Private"
 
     print(f"Checking: {repo} at cell B{idx+2}")
 
     # If the repo is not private, get the contents
-    if repoData:
-        content = repoData.get_contents("")
+    content = repoData.get_contents("")
 
-        # Check subdirectories for package.json and Cargo.toml
-        content.extend(
-            c
-            for i in content
-            if i.type == "dir" and i.name not in irreleventDirectories
-            for c in repoData.get_contents(i.path)
-            if c.name in ["package.json", "Cargo.toml"]
-        )
+    # Check subdirectories for package.json and Cargo.toml
+    content.extend(
+    c
+    for i in content
+    if i.type == "dir" and i.name not in irreleventDirectories
+    for c in repoData.get_contents(i.path)
+    if c.name in ["package.json", "Cargo.toml"]
+    )
 
-        content.extend(
-            c
-            for i in content
-            if i.type == "dir" and i.name not in irreleventDirectories
-            for i2 in repoData.get_contents(i.path)
-            if i2.type == "dir"
-            for c in repoData.get_contents(i2.path)
-            if c.name in ["package.json", "Cargo.toml"]
-        )
+    content.extend(
+    c
+    for i in content
+    if i.type == "dir" and i.name not in irreleventDirectories
+    for i2 in repoData.get_contents(i.path)
+    if i2.type == "dir"
+    for c in repoData.get_contents(i2.path)
+    if c.name in ["package.json", "Cargo.toml"]
+    )
 
-        packages = [c for c in content if c.name.lower() == "package.json"]
-        tomls = [c for c in content if c.name.lower() == "cargo.toml"]
+    packages = [c for c in content if c.name.lower() == "package.json"]
+    tomls = [c for c in content if c.name.lower() == "cargo.toml"]
 
+    for package in packages:
+        if any(ext in package.decoded_content.decode("utf-8") for ext in jsLibs):
+            print("SOL [From package.json]")
+            given_type = "Solana"
+            break
+
+    for toml in tomls:
+        if any(ext in toml.decoded_content.decode("utf-8") for ext in jsLibs):
+            print("SOL [From Cargo.toml")
+            given_type = "Solana"
+            break
+
+    # Multi only matters if SOL is there
+    if given_type == "Solana":
         for package in packages:
-            if any(ext in package.decoded_content.decode("utf-8") for ext in jsLibs):
-                print("SOL from JS")
-                given_type = "Solana"
+            if any(
+                ext in package.decoded_content.decode("utf-8") for ext in otherLibs
+            ):
+                given_type = "Multi"
                 break
+    else:
+        given_type = "NA"
 
-        for toml in tomls:
-            if any(ext in toml.decoded_content.decode("utf-8") for ext in jsLibs):
-                print("SOL from Toml")
-                given_type = "Solana"
-                break
-
-        # Multi only matters if SOL is there
-        if given_type == "Solana":
-            for package in packages:
-                if any(
-                    ext in package.decoded_content.decode("utf-8") for ext in otherLibs
-                ):
-                    print("Multi from JS")
-                    given_type = "Multi"
-                    break
-        else:
-            given_type = "NA"
-
+    return given_type
     # Update the worksheet with the repo and its type
+
+for idx, repo in enumerate(repos[continue_num:]):
+    given_type = identify(repo)
     row = "B" + str(idx + continue_num + 2)
     worksht.update_values(row, [[given_type]])
     print(f"Updated B{idx+2} with {given_type}\n")
