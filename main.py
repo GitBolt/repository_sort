@@ -19,6 +19,8 @@ otherLibs = ['"web3.js"',  '"web3"', "ethers.js", "solidity", "ethereum",
              "cardano", "tezos", "polygon", "matic", "hardhat", "ethers",
              "monero", "bitcoin", "eth-", "metamask", "aptos", "brave-wallet"]
 
+irreleventDirectories = ["node_modules", ".vscode", ".github", ".husky", ".git", ".idea", ".cache", ".DS_Store"]
+
 # Initialize the Google Sheets client
 client = pygsheets.authorize(service_account_file="cred.json")
 spreadsht = client.open("Solana Repo Audit [Bolt]")
@@ -44,11 +46,11 @@ for idx, repo in enumerate(repos[continue_num:]):
         content = repoData.get_contents("")
 
         # Check subdirectories for package.json and Cargo.toml
-        content.extend(c for i in content if i.type == "dir" and i.name != "node_modules"
+        content.extend(c for i in content if i.type == "dir" and i.name not in irreleventDirectories
                        for c in repoData.get_contents(i.path)
                        if c.name in ["package.json", "Cargo.toml"])
         
-        content.extend(c for i in content if i.type == "dir" and i.name != "node_modules"
+        content.extend(c for i in content if i.type == "dir" and i.name not in irreleventDirectories
                         for i2 in repoData.get_contents(i.path) if i2.type == "dir"
                         for c in repoData.get_contents(i2.path)
                         if c.name in ["package.json", "Cargo.toml"])
