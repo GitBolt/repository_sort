@@ -61,7 +61,7 @@ spreadsht = client.open("Solana Repo Audit [Bolt]")
 worksht = spreadsht.worksheet("title", "SolanaRepos")
 
 # Start at the specified repo index
-continue_num = 7679
+continue_num = 21020
 def identify(repo_url: str) -> str:
     given_type = "Private"
     repoData = None

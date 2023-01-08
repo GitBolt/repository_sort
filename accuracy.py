@@ -26,4 +26,4 @@ def calculate_accuracy(file1, file2):
 # test the function
 accuracy = calculate_accuracy('datasets/bolt.csv', 'datasets/priyesh.csv')
 print("\n")
-print(f'Accuracy: 96.3%')
+print("Accuracy: ", accuracy)
