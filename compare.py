@@ -2,7 +2,7 @@ import csv
 
 # Read in the merged.csv file
 merged_repos = []
-with open('bolt_filled.csv', 'r') as merged_file:
+with open('datasets/bolt.csv', 'r') as merged_file:
     csv_reader = csv.reader(merged_file)
     # Skip the header row
     next(csv_reader)
@@ -11,7 +11,7 @@ with open('bolt_filled.csv', 'r') as merged_file:
 
 # Read in the priyesh.csv file
 priyesh_repos = {}
-with open('priyesh.csv', 'r') as priyesh_file:
+with open('datasets/priyesh.csv', 'r') as priyesh_file:
     csv_reader = csv.reader(priyesh_file)
     # Skip the header row
     next(csv_reader)

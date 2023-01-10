@@ -132,7 +132,6 @@ def identify(repo_url: str) -> str:
     return given_type
     # Update the worksheet with the repo and its type
 
-exceptions = []
 for idx, repo in enumerate(repos[continue_num:]):
     try:
         given_type = identify(repo)
@@ -141,7 +140,5 @@ for idx, repo in enumerate(repos[continue_num:]):
         print(f"Updated B{continue_num+idx+2} with {given_type}\n")
     except Exception as e:
         print(e)
-        exceptions.append("B" + str(idx+2))
         continue
-print(exceptions)
-print("Finished!")
+print("Finished.")
