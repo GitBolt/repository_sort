@@ -51,7 +51,6 @@ sol_keywords = [
 
 other_keywords = [
     '"web3.js"',
-    '"web3"',
     "ethers.js",
     "solidity",
     "ethereum",
@@ -87,7 +86,7 @@ spreadsht = client.open("Audited")
 worksht = spreadsht.worksheet("title", "Repos")
 
 # Start at the specified repo index
-continue_num = 84
+continue_num = 197
 
 # Sorting function
 def identify(repo_url: str) -> str:
@@ -104,12 +103,15 @@ def identify(repo_url: str) -> str:
             print("Rate Limited\n")
             gh = Github(github_key2)
             repoData = gh.get_repo(repo_url.split("github.com/")[1].strip())
-        given_type = private_tag
+        else:
+            given_type = private_tag
+            return
 
     print(f"Checking: {repo} at cell B{continue_num+idx+2}")
-
     if repoData:
-        # If the repo is not private, get the contents
+        # Repo is not private anymore, but invalid without checks yet
+        given_type = invalid_tag
+
         content = repoData.get_contents("")
 
         # Check subdirectories for package.json and Cargo.toml
@@ -118,7 +120,7 @@ def identify(repo_url: str) -> str:
         for i in content
         if i.type == "dir" and i.name not in ignore_dirs
         for c in repoData.get_contents(i.path)
-        if c.name in ["package.json", "Cargo.toml", "go.mod"]
+        if c.name in ["package.json", "Cargo.toml", "go.mod", "setup.py"]
         )
 
         content.extend(
@@ -128,12 +130,13 @@ def identify(repo_url: str) -> str:
         for i2 in repoData.get_contents(i.path)
         if i2.type == "dir"
         for c in repoData.get_contents(i2.path)
-        if c.name in ["package.json", "Cargo.toml", "go.mod"]
+        if c.name in ["package.json", "Cargo.toml", "go.mod", "setup.py"]
         )
 
         packages = [c for c in content if c.name.lower() == "package.json"]
         tomls = [c for c in content if c.name.lower() == "cargo.toml"]
         go = [c for c in content if c.name.lower() == "go.mod"]
+        pysetups = [c for c in content if c.name.lower() == "setup.py"]
 
         for package in packages:
             print(package.decoded_content.decode("utf-8"))
@@ -155,11 +158,24 @@ def identify(repo_url: str) -> str:
                 given_type = solana_tag
                 break
 
+        for py in pysetups:
+            if any(ext in py.decoded_content.decode("utf-8") for ext in sol_keywords):
+                print("SOL [From setup.py]")
+                given_type = solana_tag
+                break
+
+
         for package in packages:
+            print(package.decoded_content.decode("utf-8"))
             if any(
                 ext in package.decoded_content.decode("utf-8") for ext in other_keywords
             ):
-                print("Found other keywords package")
+                matching_keywords = []
+                for ext in other_keywords:
+                    if ext in package.decoded_content.decode("utf-8"):
+                        matching_keywords.append(ext)
+                print("These matched: ", matching_keywords)
+                print("Found other chain [From package.json]")
                 if given_type == solana_tag:
                     given_type = multichain_tag
                     break
@@ -172,7 +188,7 @@ def identify(repo_url: str) -> str:
             if any(
                 ext in g.decoded_content.decode("utf-8") for ext in other_keywords
             ):
-                print("Found other keywords from Go")
+                print("Found other chain [from Go]")
                 if given_type == "Solana":
                     given_type = multichain_tag
                 else:
@@ -184,7 +200,6 @@ def identify(repo_url: str) -> str:
         print("Repo data not found")
         given_type = invalid_tag
 
-    print("returning", given_type)
     return given_type
 
 for idx, repo in enumerate(repos[continue_num:]):
