@@ -10,11 +10,15 @@ load_dotenv()
 github_key = os.getenv('github_key')
 github_key2 = os.getenv('github_key2')
 
-# Parameters
+"""Parameters"""
+# Input data file name
 data_file = "repos.csv"
+# The classification type column letter
 column_letter = "L"
+# Start at the specified repo index
+continue_num = 1290
 
-# Tags
+# Tags for classification
 solana_tag = "PASS"
 multichain_tag = "MULTI"
 private_tag = "PRIVATE"
@@ -30,7 +34,7 @@ with open(data_file, 'r') as file:
             repos.append(str(row[0]))
 
 
-# List of library names to check for in package.json and Cargo.toml
+# List of Solana keywords and libs to check for in package files
 sol_keywords = [
     "@solana/web3.js",
     "@metaplex-foundation",
@@ -49,6 +53,7 @@ sol_keywords = [
     "serum-dex",
 ]
 
+# Other chain keywords and libs
 other_keywords = [
     '"web3.js"',
     "ethers.js",
@@ -85,9 +90,6 @@ client = pygsheets.authorize(service_account_file="cred.json")
 spreadsht = client.open("Audited")
 worksht = spreadsht.worksheet("title", "Repos")
 
-# Start at the specified repo index
-continue_num = 197
-
 # Sorting function
 def identify(repo_url: str) -> str:
     given_type = private_tag
@@ -105,7 +107,7 @@ def identify(repo_url: str) -> str:
             repoData = gh.get_repo(repo_url.split("github.com/")[1].strip())
         else:
             given_type = private_tag
-            return
+            return given_type
 
     print(f"Checking: {repo} at cell B{continue_num+idx+2}")
     if repoData:
