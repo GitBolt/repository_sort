@@ -1,11 +1,24 @@
 import time
+import os
 import pygsheets
 from github import Github
-from github_key import github_key, github_key2
 import csv
+from dotenv import load_dotenv
 
+load_dotenv()
+
+github_key = os.getenv('github_key')
+github_key2 = os.getenv('github_key2')
+
+# Parameters
 data_file = "repos.csv"
 column_letter = "L"
+
+# Tags
+solana_tag = "PASS"
+multichain_tag = "MULTI"
+private_tag = "PRIVATE"
+invalid_tag="FAIL"
 
 
 repos = []
@@ -27,6 +40,8 @@ sol_keywords = [
     "anchor-lang",
     "anchor-spl",
     "spl-token",
+    "@coral-xyz/",
+    "react-xnft",
     "solana-program",
     "solana",
     "metaplex",
@@ -72,9 +87,11 @@ spreadsht = client.open("Audited")
 worksht = spreadsht.worksheet("title", "Repos")
 
 # Start at the specified repo index
-continue_num = 101
+continue_num = 84
+
+# Sorting function
 def identify(repo_url: str) -> str:
-    given_type = "Private"
+    given_type = private_tag
     repoData = None
 
     gh = Github(github_key)
@@ -87,7 +104,7 @@ def identify(repo_url: str) -> str:
             print("Rate Limited\n")
             gh = Github(github_key2)
             repoData = gh.get_repo(repo_url.split("github.com/")[1].strip())
-        given_type = "Private"
+        given_type = private_tag
 
     print(f"Checking: {repo} at cell B{continue_num+idx+2}")
 
@@ -101,7 +118,7 @@ def identify(repo_url: str) -> str:
         for i in content
         if i.type == "dir" and i.name not in ignore_dirs
         for c in repoData.get_contents(i.path)
-        if c.name in ["package.json", "Cargo.toml"]
+        if c.name in ["package.json", "Cargo.toml", "go.mod"]
         )
 
         content.extend(
@@ -111,38 +128,64 @@ def identify(repo_url: str) -> str:
         for i2 in repoData.get_contents(i.path)
         if i2.type == "dir"
         for c in repoData.get_contents(i2.path)
-        if c.name in ["package.json", "Cargo.toml"]
+        if c.name in ["package.json", "Cargo.toml", "go.mod"]
         )
 
         packages = [c for c in content if c.name.lower() == "package.json"]
         tomls = [c for c in content if c.name.lower() == "cargo.toml"]
+        go = [c for c in content if c.name.lower() == "go.mod"]
 
         for package in packages:
             print(package.decoded_content.decode("utf-8"))
             if any(ext in package.decoded_content.decode("utf-8") for ext in sol_keywords):
                 print("SOL [From package.json]")
-                given_type = "Solana"
+                given_type = solana_tag
                 break
 
         for toml in tomls:
+            print(toml.decoded_content.decode("utf-8"))
             if any(ext in toml.decoded_content.decode("utf-8") for ext in sol_keywords):
                 print("SOL [From Cargo.toml")
-                given_type = "Solana"
+                given_type = solana_tag
                 break
 
-        # Multi only matters if SOL is there
-        if given_type == "Solana":
-            for package in packages:
-                if any(
-                    ext in package.decoded_content.decode("utf-8") for ext in other_keywords
-                ):
-                    given_type = "Multi"
-                    break
-        else:
-            given_type = "NA"
+        for g in go:
+            if any(ext in g.decoded_content.decode("utf-8") for ext in sol_keywords):
+                print("SOL [From go.mod")
+                given_type = solana_tag
+                break
 
+        for package in packages:
+            if any(
+                ext in package.decoded_content.decode("utf-8") for ext in other_keywords
+            ):
+                print("Found other keywords package")
+                if given_type == solana_tag:
+                    given_type = multichain_tag
+                    break
+                else:
+                    # Other chain, so invalid
+                    given_type = invalid_tag
+                    break
+        
+        for g in go:
+            if any(
+                ext in g.decoded_content.decode("utf-8") for ext in other_keywords
+            ):
+                print("Found other keywords from Go")
+                if given_type == "Solana":
+                    given_type = multichain_tag
+                else:
+                    # Other chain, so invalid
+                    given_type = invalid_tag
+                break
+
+    else:
+        print("Repo data not found")
+        given_type = invalid_tag
+
+    print("returning", given_type)
     return given_type
-    # Update the worksheet with the repo and its type
 
 for idx, repo in enumerate(repos[continue_num:]):
     try:
