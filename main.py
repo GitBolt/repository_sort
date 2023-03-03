@@ -2,13 +2,23 @@ import time
 import pygsheets
 from github import Github
 from github_key import github_key, github_key2
-import repos
+import csv
 
-# Split the list of repos and filter out invalid ones
-repos = [i.replace("\t", "") for i in repos.REPOS.split("\n") if "https" in i]
+data_file = "repos.csv"
+column_letter = "L"
+
+
+repos = []
+
+with open(data_file, 'r') as file:
+    reader = csv.reader(file)
+    for row in reader:
+        if row and row[0].startswith('http'):
+            repos.append(str(row[0]))
+
 
 # List of library names to check for in package.json and Cargo.toml
-solLibs = [
+sol_keywords = [
     "@solana/web3.js",
     "@metaplex-foundation",
     "@solana/spl-token",
@@ -24,7 +34,7 @@ solLibs = [
     "serum-dex",
 ]
 
-otherLibs = [
+other_keywords = [
     '"web3.js"',
     '"web3"',
     "ethers.js",
@@ -44,7 +54,7 @@ otherLibs = [
     "brave-wallet",
 ]
 
-irreleventDirectories = [
+ignore_dirs = [
     "node_modules",
     ".vscode",
     ".github",
@@ -55,13 +65,14 @@ irreleventDirectories = [
     ".DS_Store",
 ]
 
+
 # Initialize the Google Sheets client
 client = pygsheets.authorize(service_account_file="cred.json")
-spreadsht = client.open("Solana Repo Audit [Bolt]")
-worksht = spreadsht.worksheet("title", "SolanaRepos")
+spreadsht = client.open("Audited")
+worksht = spreadsht.worksheet("title", "Repos")
 
 # Start at the specified repo index
-continue_num = 21020
+continue_num = 101
 def identify(repo_url: str) -> str:
     given_type = "Private"
     repoData = None
@@ -73,6 +84,7 @@ def identify(repo_url: str) -> str:
         repoData = gh.get_repo(repo_url.split("github.com/")[1].strip())
     except Exception as e:
         if ("API rate" in str(e)):
+            print("Rate Limited\n")
             gh = Github(github_key2)
             repoData = gh.get_repo(repo_url.split("github.com/")[1].strip())
         given_type = "Private"
@@ -87,7 +99,7 @@ def identify(repo_url: str) -> str:
         content.extend(
         c
         for i in content
-        if i.type == "dir" and i.name not in irreleventDirectories
+        if i.type == "dir" and i.name not in ignore_dirs
         for c in repoData.get_contents(i.path)
         if c.name in ["package.json", "Cargo.toml"]
         )
@@ -95,7 +107,7 @@ def identify(repo_url: str) -> str:
         content.extend(
         c
         for i in content
-        if i.type == "dir" and i.name not in irreleventDirectories
+        if i.type == "dir" and i.name not in ignore_dirs
         for i2 in repoData.get_contents(i.path)
         if i2.type == "dir"
         for c in repoData.get_contents(i2.path)
@@ -107,13 +119,13 @@ def identify(repo_url: str) -> str:
 
         for package in packages:
             print(package.decoded_content.decode("utf-8"))
-            if any(ext in package.decoded_content.decode("utf-8") for ext in solLibs):
+            if any(ext in package.decoded_content.decode("utf-8") for ext in sol_keywords):
                 print("SOL [From package.json]")
                 given_type = "Solana"
                 break
 
         for toml in tomls:
-            if any(ext in toml.decoded_content.decode("utf-8") for ext in solLibs):
+            if any(ext in toml.decoded_content.decode("utf-8") for ext in sol_keywords):
                 print("SOL [From Cargo.toml")
                 given_type = "Solana"
                 break
@@ -122,7 +134,7 @@ def identify(repo_url: str) -> str:
         if given_type == "Solana":
             for package in packages:
                 if any(
-                    ext in package.decoded_content.decode("utf-8") for ext in otherLibs
+                    ext in package.decoded_content.decode("utf-8") for ext in other_keywords
                 ):
                     given_type = "Multi"
                     break
@@ -135,7 +147,7 @@ def identify(repo_url: str) -> str:
 for idx, repo in enumerate(repos[continue_num:]):
     try:
         given_type = identify(repo)
-        row = "B" + str(idx + continue_num + 2)
+        row = column_letter + str(idx + continue_num + 2)
         worksht.update_values(row, [[given_type]])
         print(f"Updated B{continue_num+idx+2} with {given_type}\n")
     except Exception as e:
