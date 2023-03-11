@@ -28,7 +28,6 @@ invalid_tag = "FAIL"
 name = "Audited [By Bolt]"
 sheet_title = "repos"
 
-
 repos = []
 
 with open(data_file, 'r') as file:
@@ -94,8 +93,6 @@ client = pygsheets.authorize(service_account_file="credentials.json")
 spreadsheet = client.open(name)
 worksheet = spreadsheet.worksheet("title", sheet_title)
 
-# Sorting function
-
 
 def identify(repo_url: str) -> str:
     given_type = private_tag
@@ -103,8 +100,7 @@ def identify(repo_url: str) -> str:
 
     gh = Github(github_key)
 
-    # Get the repo data or mark it as private if it fails
-    repo_name = repo_name
+    repo_name = repo_url.split("github.com/")[1].strip()
     try:
         repoData = gh.get_repo(repo_name)
     except Exception as e:

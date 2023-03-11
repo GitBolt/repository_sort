@@ -6,7 +6,7 @@ output_file = "repos.csv"
 with open(input_file, "r") as file:
     reader = csv.reader(file)
     header = next(reader)  # get header row
-    url_index = header.index("url")  # find index of "url" column
+    url_index = header.index("url")
 
     urls = []
     for row in reader:
