@@ -151,10 +151,10 @@ def identify(repo_url: str) -> str:
 
 
         for content in itertools.chain(
-            itertools.islice(packages, len(packages)),
-            itertools.islice(tomls, len(tomls)),
-            itertools.islice(go_libs, len(go_libs)),
-            itertools.islice(pysetups, len(pysetups))
+            packages,
+            tomls,
+            go_libs,
+            pysetups
         ):
             decoded_content = content.decoded_content.decode("utf-8")
             if any(ext in decoded_content for ext in sol_keywords):
@@ -170,7 +170,6 @@ def identify(repo_url: str) -> str:
                 break
             else:
                 print(decoded_content)
-
 
         # Multi chain check
         for item in itertools.chain(packages, go_libs, tomls, pysetups):
