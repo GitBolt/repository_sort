@@ -16,7 +16,7 @@ data_file = "repos.csv"
 # The classification type column letter in spreadsheet
 column_letter = "D"
 # Start at the specified repo index from csv (to pause/resume)
-continue_num = 465
+continue_num = 603
 
 # Tags for classification
 solana_tag = "SOLANA"
@@ -107,7 +107,11 @@ def identify(repo_url: str) -> str:
         if ("API rate" in str(e)):
             print("You got rate limited nerd, trying other key now")
             gh = Github(github_key2)
-            repo_data = gh.get_repo(repo_name)
+            try:
+                repo_data = gh.get_repo(repo_name)
+            except:
+                given_type = private_tag
+                return given_type
         else:
             # Repo private most likely
             given_type = private_tag
