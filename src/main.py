@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-github_key = os.getenv('GH_KEY')
+github_key = os.getenv('GH_KEY1')
 github_key2 = os.getenv('GH_KEY2')
 
 # Input data file name
@@ -97,7 +97,6 @@ worksheet = spreadsheet.worksheet("title", sheet_title)
 def identify(repo_url: str) -> str:
     given_type = private_tag
     repo_data = None
-
     gh = Github(github_key)
 
     repo_name = repo_url.split("github.com/")[1].strip()
