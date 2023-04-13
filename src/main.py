@@ -16,7 +16,7 @@ data_file = "repos.csv"
 # The classification type column letter in spreadsheet
 column_letter = "D"
 # Start at the specified repo index from csv (to pause/resume)
-continue_num = 150
+continue_num = 157
 
 # Tags for classification
 solana_tag = "SOLANA"
@@ -205,7 +205,7 @@ for idx, repo in enumerate(repos[continue_num:]):
     time_taken = end_time - start_time
     total_time += time_taken
     avg_time = (total_time / (idx + 1)) * num_repos
-    print(f"Estimated time {round(avg_time / 60 / 60)}h\n")
+    print(f"Estimated time {round(avg_time / 60 / 60, 3)}h\n")
     
 
 print("Finished.")
