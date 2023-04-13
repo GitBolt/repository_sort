@@ -16,7 +16,7 @@ data_file = "repos.csv"
 # The classification type column letter in spreadsheet
 column_letter = "D"
 # Start at the specified repo index from csv (to pause/resume)
-continue_num = 0
+continue_num = 150
 
 # Tags for classification
 solana_tag = "SOLANA"
@@ -25,7 +25,7 @@ private_tag = "PRIVATE"
 invalid_tag = "FAIL"
 
 # Spreadsheet details
-name = "Audited [By Bolt]"
+name = "April Audited [By Bolt]"
 sheet_title = "Repos"
 
 repos = []
@@ -105,7 +105,7 @@ def identify(repo_url: str) -> str:
     except Exception as e:
         # If rate limited, switch to other key
         if ("API rate" in str(e)):
-            print("You got rate limited nerd")
+            print("You got rate limited nerd, trying other key now")
             gh = Github(github_key2)
             repo_data = gh.get_repo(repo_name)
         else:
@@ -144,7 +144,6 @@ def identify(repo_url: str) -> str:
         go_libs = [c for c in content if c.name.lower() == "go.mod"]
         pysetups = [c for c in content if c.name.lower() == "setup.py"]
 
-
         for content in itertools.chain(
             packages,
             tomls,
@@ -164,7 +163,7 @@ def identify(repo_url: str) -> str:
                 given_type = solana_tag
                 break
             else:
-                print(decoded_content)
+                print("SOL not found, content: ", decoded_content)
 
         # Multi chain check
         for item in itertools.chain(packages, go_libs, tomls, pysetups):
@@ -172,7 +171,7 @@ def identify(repo_url: str) -> str:
                 matching_keywords = [
                     ext for ext in other_keywords if ext in item.decoded_content.decode("utf-8")
                 ]
-                print(f"These matched: {matching_keywords}")
+                print(f"Matched keywords for multi chain: {matching_keywords}")
                 if given_type == solana_tag:
                     given_type = multichain_tag
                 else:
@@ -187,14 +186,26 @@ def identify(repo_url: str) -> str:
     return given_type
 
 
+total_time = 0.0
+num_repos = len(repos[continue_num:])
+
 for idx, repo in enumerate(repos[continue_num:]):
+    start_time = time.time()
     try:
         given_type = identify(repo)
         row = column_letter + str(idx + continue_num + 2)
         worksheet.update_values(row, [[given_type]])
         print(
-            f"Updated {column_letter}{continue_num+idx+2} with {given_type}\n")
+            f"Updated {column_letter}{continue_num+idx+2} with {given_type}")
     except Exception as e:
         print(e)
         continue
+
+    end_time = time.time()
+    time_taken = end_time - start_time
+    total_time += time_taken
+    avg_time = (total_time / (idx + 1)) * num_repos
+    print(f"Estimated time {round(avg_time / 60 / 60)}h\n")
+    
+
 print("Finished.")
