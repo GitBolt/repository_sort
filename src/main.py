@@ -14,19 +14,19 @@ github_key2 = os.getenv('GH_KEY2')
 # Input data file name
 data_file = "repos.csv"
 # The classification type column letter in spreadsheet
-column_letter = "L"
+column_letter = "D"
 # Start at the specified repo index from csv (to pause/resume)
 continue_num = 0
 
 # Tags for classification
-solana_tag = "PASS"
+solana_tag = "SOLANA"
 multichain_tag = "MULTI"
 private_tag = "PRIVATE"
 invalid_tag = "FAIL"
 
 # Spreadsheet details
 name = "Audited [By Bolt]"
-sheet_title = "repos"
+sheet_title = "Repos"
 
 repos = []
 
@@ -102,7 +102,7 @@ def identify(repo_url: str) -> str:
 
     repo_name = repo_url.split("github.com/")[1].strip()
     try:
-        repoData = gh.get_repo(repo_name)
+        repo_data = gh.get_repo(repo_name)
     except Exception as e:
         # If rate limited, switch to other key
         if ("API rate" in str(e)):
@@ -115,18 +115,18 @@ def identify(repo_url: str) -> str:
             return given_type
 
     print(f"Checking: {repo} at cell {column_letter}{continue_num+idx+2}")
-    if repoData:
+    if repo_data:
         # Repo is not private anymore, but invalid without checks yet
         given_type = invalid_tag
 
-        content = repoData.get_contents("")
+        content = repo_data.get_contents("")
 
         # Check subdirectories for package.json and Cargo.toml
         content.extend(
             c
             for i in content
             if i.type == "dir" and i.name not in ignore_dirs
-            for c in repoData.get_contents(i.path)
+            for c in repo_data.get_contents(i.path)
             if c.name in ["package.json", "Cargo.toml", "go.mod", "setup.py"]
         )
 
@@ -134,9 +134,9 @@ def identify(repo_url: str) -> str:
             c
             for i in content
             if i.type == "dir" and i.name not in ignore_dirs
-            for i2 in repoData.get_contents(i.path)
+            for i2 in repo_data.get_contents(i.path)
             if i2.type == "dir"
-            for c in repoData.get_contents(i2.path)
+            for c in repo_data.get_contents(i2.path)
             if c.name in ["package.json", "Cargo.toml", "go.mod", "setup.py"]
         )
 
