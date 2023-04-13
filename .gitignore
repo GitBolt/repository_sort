@@ -1,6 +1,6 @@
 __pycache__
 .env
-cred.json
+credentials.json
 github_key.py
 input.csv
 repos.csv
