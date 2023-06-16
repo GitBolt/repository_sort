@@ -14,9 +14,9 @@ github_key2 = os.getenv('GH_KEY2')
 # Input data file name
 data_file = "repos.csv"
 # The classification type column letter in spreadsheet
-column_letter = "D"
+column_letter = "C"
 # Start at the specified repo index from csv (to pause/resume)
-continue_num = 603
+continue_num = 1010
 
 # Tags for classification
 solana_tag = "SOLANA"
@@ -25,7 +25,7 @@ private_tag = "PRIVATE"
 invalid_tag = "FAIL"
 
 # Spreadsheet details
-name = "April Audited [By Bolt]"
+name = "June Audit [By Bolt]"
 sheet_title = "Repos"
 
 repos = []
@@ -117,7 +117,7 @@ def identify(repo_url: str) -> str:
             given_type = private_tag
             return given_type
 
-    print(f"Checking: {repo} at cell {column_letter}{continue_num+idx+2}")
+    print(f"Checking: {repo} at cell {column_letter}{continue_num+idx+1}")
     if repo_data:
         # Repo is not private anymore, but invalid without checks yet
         given_type = invalid_tag
@@ -196,10 +196,10 @@ for idx, repo in enumerate(repos[continue_num:]):
     start_time = time.time()
     try:
         given_type = identify(repo)
-        row = column_letter + str(idx + continue_num + 2)
+        row = column_letter + str(idx + continue_num + 1)
         worksheet.update_values(row, [[given_type]])
         print(
-            f"Updated {column_letter}{continue_num+idx+2} with {given_type}")
+            f"Updated {column_letter}{continue_num+idx+1} with {given_type}")
     except Exception as e:
         print(e)
         continue
