@@ -3,8 +3,8 @@ import requests
 import json
 import os
 
-github_key = os.getenv('GH_KEY1')
-github_key2 = os.getenv('GH_KEY2')
+github_key = os.getenv("GH_KEY1")
+github_key2 = os.getenv("GH_KEY2")
 
 
 def link_to_api(url):
@@ -59,6 +59,7 @@ def get_user_profile(username):
 
 def get_contact_info(profile):
     contact_info = {}
+    print(profile)
     if profile.get("blog"):
         contact_info["website"] = profile["blog"]
     else:
@@ -71,6 +72,14 @@ def get_contact_info(profile):
         contact_info["email"] = profile["email"]
     else:
         contact_info["email"] = None
+    if profile.get("name"):
+        contact_info["name"] = profile["name"]
+    else:
+        contact_info["name"] = profile["login"]
+    if profile.get("location"):
+        contact_info["location"] = profile["location"]
+    else:
+        contact_info["location"] = None
     return contact_info
 
 
@@ -92,10 +101,6 @@ def process_repos(repos):
                         found = True
                         data["total_commits"] += commits
                         data["contributed_repos"].append(repo)
-                        if commits > data["total_commits"]:
-                            data["top_contributed_repos"] = [repo]
-                        elif commits == data["total_commits"]:
-                            data["top_contributed_repos"].append(repo)
                         break
                 if not found:
                     data = {
@@ -103,11 +108,9 @@ def process_repos(repos):
                         "contact_info": contact_info,
                         "total_commits": commits,
                         "contributed_repos": [repo],
-                        "top_contributed_repos": [repo]
                     }
                     contributors_data.append(data)
-            # Save data to JSON file after processing each repo
-            save_json(contributors_data, "contributors.json")
+            save_json(contributors_data, "data.json")
         except Exception as e:
             print("Did not work: ", repo, e)
             not_worked.append(repo)
@@ -126,18 +129,15 @@ def save_json(data, filename):
 
 
 
-contributors_data = process_repos(solana_repos)
-save_json(contributors_data, "contributors.json")
+contributors_data = process_repos(solana_repos[:50])
+save_json(contributors_data, "data.json")
 
 
-# Read the JSON data from file
-with open('contributors.json', 'r') as file:
+with open('data.json', 'r') as file:
     data = json.load(file)
 
-# Sort the data by commit count
 sorted_data = sorted(data, key=lambda x: x['total_commits'], reverse=True)
 
-# Write the sorted data back to the file
 with open('data.json', 'w') as file:
     json.dump(sorted_data, file, indent=4)
 
