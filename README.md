@@ -1,6 +1,7 @@
 # Solana Repo Sorter
 
-This repository contains a Python script that can be used to sort repositories based on whether they are Solana based, Multichain, None of these or Private. It was created as a part of research for [Electric Capital Developer Report 2022](https://developerreport.com)
+This repository contains a Python script that can be used to sort repositories based on whether they are Solana based, Multichain, None of these or Private. 
+It was created as a part of research for [Electric Capital Developer Report 2022](https://developerreport.com) and is currently being used for Solana Foundation's Monthly Developer Reports
 
 ## Running the Script
 
