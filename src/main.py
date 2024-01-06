@@ -5,6 +5,7 @@ import itertools
 import pygsheets
 from github import Github
 from dotenv import load_dotenv
+import time
 
 load_dotenv()
 
@@ -17,7 +18,7 @@ data_file = "repos.csv"
 # The classification type column letter in spreadsheet
 column_letter = "B"
 # Start at the specified repo index from csv (to pause/resume)
-continue_num = 15296
+continue_num = 19041
 
 # Tags for classification
 solana_tag = "SOLANA"
@@ -100,7 +101,6 @@ def identify(repo_url: str) -> str:
     repo_data = None
     repo_name = repo_url.split("github.com/")[1].strip()
 
-
     keys = [github_key1, github_key2, github_key3]
 
     for key in keys:
@@ -110,15 +110,18 @@ def identify(repo_url: str) -> str:
             break  # exit the loop if successful
         except Exception as e:
             if "API rate" in str(e):
-                print(f"You got rate limited with key, trying next key now")
+                print(f"You got rate limited with key {key}, trying next key now")
             else:
                 # Repo private most likely
                 given_type = private_tag
                 return given_type
     else:
         # all keys are rate limited
+        print("All keys are rate limited. Sleeping for 30 minutes.")
+        time.sleep(1800)  # Sleep for 30 minutes
         given_type = private_tag
         return given_type
+
 
 
     print(f"Checking: {repo} at cell {column_letter}{continue_num+idx+1}")
