@@ -8,15 +8,16 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-github_key = os.getenv('GH_KEY1')
+github_key1 = os.getenv('GH_KEY1')
 github_key2 = os.getenv('GH_KEY2')
+github_key3 = os.getenv('GH_KEY3')
 
 # Input data file name
 data_file = "repos.csv"
 # The classification type column letter in spreadsheet
-column_letter = "C"
+column_letter = "B"
 # Start at the specified repo index from csv (to pause/resume)
-continue_num = 1010
+continue_num = 15296
 
 # Tags for classification
 solana_tag = "SOLANA"
@@ -25,8 +26,8 @@ private_tag = "PRIVATE"
 invalid_tag = "FAIL"
 
 # Spreadsheet details
-name = "June Audit [By Bolt]"
-sheet_title = "Repos"
+name = "Jan Audit"
+sheet_title = "Sheet1"
 
 repos = []
 
@@ -97,33 +98,41 @@ worksheet = spreadsheet.worksheet("title", sheet_title)
 def identify(repo_url: str) -> str:
     given_type = private_tag
     repo_data = None
-    gh = Github(github_key)
-
     repo_name = repo_url.split("github.com/")[1].strip()
-    try:
-        repo_data = gh.get_repo(repo_name)
-    except Exception as e:
-        # If rate limited, switch to other key
-        if ("API rate" in str(e)):
-            print("You got rate limited nerd, trying other key now")
-            gh = Github(github_key2)
-            try:
-                repo_data = gh.get_repo(repo_name)
-            except:
+
+
+    keys = [github_key1, github_key2, github_key3]
+
+    for key in keys:
+        try:
+            gh = Github(key)
+            repo_data = gh.get_repo(repo_name)
+            break  # exit the loop if successful
+        except Exception as e:
+            if "API rate" in str(e):
+                print(f"You got rate limited with key, trying next key now")
+            else:
+                # Repo private most likely
                 given_type = private_tag
                 return given_type
-        else:
-            # Repo private most likely
-            given_type = private_tag
-            return given_type
+    else:
+        # all keys are rate limited
+        given_type = private_tag
+        return given_type
+
 
     print(f"Checking: {repo} at cell {column_letter}{continue_num+idx+1}")
     if repo_data:
         # Repo is not private anymore, but invalid without checks yet
         given_type = invalid_tag
 
-        content = repo_data.get_contents("")
-
+        try:
+            content = repo_data.get_contents("")
+        except:
+            print("Empty Repo")
+            given_type = invalid_tag
+            return given_type
+            
         # Check subdirectories for package.json and Cargo.toml
         content.extend(
             c
@@ -180,7 +189,7 @@ def identify(repo_url: str) -> str:
                     given_type = multichain_tag
                 else:
                     given_type = invalid_tag
-                    print(f"Found other chain [From {item.filename}]")
+                    print(f"Found other chain [From {item}]")
                 break
 
     else:
@@ -196,12 +205,12 @@ for idx, repo in enumerate(repos[continue_num:]):
     start_time = time.time()
     try:
         given_type = identify(repo)
-        row = column_letter + str(idx + continue_num + 1)
+        row = column_letter + str(idx + continue_num + 2)
         worksheet.update_values(row, [[given_type]])
         print(
-            f"Updated {column_letter}{continue_num+idx+1} with {given_type}")
+            f"Updated {column_letter}{continue_num+idx+2} with {given_type}")
     except Exception as e:
-        print(e)
+        print("Error in loop: ", e)
         continue
 
     end_time = time.time()
