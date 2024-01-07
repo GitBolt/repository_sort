@@ -13,25 +13,21 @@ github_key1 = os.getenv('GH_KEY1')
 github_key2 = os.getenv('GH_KEY2')
 github_key3 = os.getenv('GH_KEY3')
 
-# Input data file name
-data_file = "repos.csv"
-# The classification type column letter in spreadsheet
-column_letter = "B"
-# Start at the specified repo index from csv (to pause/resume)
-continue_num = 19041
+EMPTY_CELL_FILL_MODE = True # True if we want to fill up cells that were missed by the script
+name = "Jan Audit" # File name
+sheet_title = "Sheet1" # Sheet name
+continue_num = 19041 # Start at the specified repo index from CSV (to pause/resume)
 
+data_file = "repos.csv" # Input data file name
+column_letter = "B" # Classification column letter in spreadsheet
 # Tags for classification
 solana_tag = "SOLANA"
 multichain_tag = "MULTI"
 private_tag = "PRIVATE"
 invalid_tag = "FAIL"
 
-# Spreadsheet details
-name = "Jan Audit"
-sheet_title = "Sheet1"
 
 repos = []
-
 with open(data_file, 'r') as file:
     reader = csv.reader(file)
     for row in reader:
@@ -58,8 +54,7 @@ sol_keywords = [
     "serum-dex",
 ]
 
-# Other chain keywords and libs
-other_keywords = [
+other_chain_keywords = [
     '"web3.js"',
     "ethers.js",
     "solidity",
@@ -93,14 +88,16 @@ ignore_dirs = [
 ]
 
 
-# Initialize the Google Sheets client
 client = pygsheets.authorize(service_account_file="credentials.json")
 spreadsheet = client.open(name)
 worksheet = spreadsheet.worksheet("title", sheet_title)
 
+# Main function
+def identify(repo_url: str, cell: str) -> str:
 
-def identify(repo_url: str) -> str:
-    given_type = private_tag
+    print(f"Checking: {repo_url} at cell {cell}")
+
+    given_type = private_tag # Assuming private repo by default
     repo_data = None
     repo_name = repo_url.split("github.com/")[1].strip()
 
@@ -115,115 +112,136 @@ def identify(repo_url: str) -> str:
             if "API rate" in str(e):
                 print(f"You got rate limited with key {key}, trying next key now")
             else:
-                # Repo private most likely
+                print("[PRIVATE] Get repo failed")
                 given_type = private_tag
                 return given_type
     else:
-        # all keys are rate limited
-        print("All keys are rate limited. Sleeping for 30 minutes.")
-        time.sleep(1800)  # Sleep for 30 minutes
-        given_type = private_tag
+        # All keys are rate limited
+        print("All keys are rate limited. Sleeping for 1 hour")
+        time.sleep(3600)  # Sleep for 1 hour
+        given_type = None # Keep that rate limited cell empty. Will be managed later
         return given_type
 
+    # Repo is not private anymore, but is invalid without checks yet
+    given_type = invalid_tag
 
+    if repo_data == None:
+        print("[INVALID] Repo Empty")
+        return
 
-    print(f"Checking: {repo} at cell {column_letter}{continue_num+idx+1}")
-    if repo_data:
-        # Repo is not private anymore, but invalid without checks yet
-        given_type = invalid_tag
+    try:
+        print("Trying to get content...")
+        content = repo_data.get_contents("")
+    except:
+        print("[INVALID] Empty repo content")
+        return given_type
+        
+    # Check subdirectories for package files
+    content.extend(
+        c
+        for i in content
+        if i.type == "dir" and i.name not in ignore_dirs
+        for c in repo_data.get_contents(i.path)
+        if c.name.lower() in ["package.json", "cargo.toml", "go.mod", "setup.py", "package.swift", "gemfile", "pipfile"]
+    )
 
-        try:
-            content = repo_data.get_contents("")
-        except:
-            print("Empty Repo")
-            given_type = invalid_tag
-            return given_type
-            
-        # Check subdirectories for package.json and Cargo.toml
-        content.extend(
-            c
-            for i in content
-            if i.type == "dir" and i.name not in ignore_dirs
-            for c in repo_data.get_contents(i.path)
-            if c.name in ["package.json", "Cargo.toml", "go.mod", "setup.py"]
-        )
+    content.extend(
+        c
+        for i in content
+        if i.type == "dir" and i.name not in ignore_dirs
+        for i2 in repo_data.get_contents(i.path)
+        if i2.type == "dir"
+        for c in repo_data.get_contents(i2.path)
+        if c.name.lower() in ["package.json", "cargo.toml", "go.mod", "setup.py", "package.swift", "gemfile", "pipfile"]
+    )
 
-        content.extend(
-            c
-            for i in content
-            if i.type == "dir" and i.name not in ignore_dirs
-            for i2 in repo_data.get_contents(i.path)
-            if i2.type == "dir"
-            for c in repo_data.get_contents(i2.path)
-            if c.name in ["package.json", "Cargo.toml", "go.mod", "setup.py"]
-        )
+    packages = [c for c in content if c.name.lower() == "package.json"]
+    tomls = [c for c in content if c.name.lower() == "cargo.toml"]
+    go_libs = [c for c in content if c.name.lower() == "go.mod"]
+    pysetups = [c for c in content if c.name.lower() == "setup.py"]
 
-        packages = [c for c in content if c.name.lower() == "package.json"]
-        tomls = [c for c in content if c.name.lower() == "cargo.toml"]
-        go_libs = [c for c in content if c.name.lower() == "go.mod"]
-        pysetups = [c for c in content if c.name.lower() == "setup.py"]
+    for content in itertools.chain(
+        packages,
+        tomls,
+        go_libs,
+        pysetups
+    ):
+        decoded_content = content.decoded_content.decode("utf-8")
+        if any(ext in decoded_content for ext in sol_keywords):
+            if content in packages:
+                print("[SOL] [From package.json]")
+            elif content in tomls:
+                print("[SOL] [From Cargo.toml]")
+            elif content in go_libs:
+                print("[SOL] [From go.mod]")
+            elif content in pysetups:
+                print("[SOL] [From setup.py]")
+            given_type = solana_tag
+            break
+        else:
+            print("SOL not found, Content: ", decoded_content)
 
-        for content in itertools.chain(
-            packages,
-            tomls,
-            go_libs,
-            pysetups
-        ):
-            decoded_content = content.decoded_content.decode("utf-8")
-            if any(ext in decoded_content for ext in sol_keywords):
-                if content in packages:
-                    print("SOL [From package.json]")
-                elif content in tomls:
-                    print("SOL [From Cargo.toml")
-                elif content in go_libs:
-                    print("SOL [From go.mod")
-                elif content in pysetups:
-                    print("SOL [From setup.py]")
-                given_type = solana_tag
-                break
+    # Multi chain check
+    for item in itertools.chain(packages, go_libs, tomls, pysetups):
+        if hasattr(item, "decoded_content") and any(ext in item.decoded_content.decode("utf-8") for ext in other_chain_keywords):
+            matching_keywords = [
+                ext for ext in other_chain_keywords if ext in item.decoded_content.decode("utf-8")
+            ]
+            print(f"Matched keywords for multi chain: {matching_keywords}")
+            if given_type == solana_tag:
+                given_type = multichain_tag
+                print("[MULTI] assigned")
             else:
-                print("SOL not found, content: ", decoded_content)
-
-        # Multi chain check
-        for item in itertools.chain(packages, go_libs, tomls, pysetups):
-            if hasattr(item, "decoded_content") and any(ext in item.decoded_content.decode("utf-8") for ext in other_keywords):
-                matching_keywords = [
-                    ext for ext in other_keywords if ext in item.decoded_content.decode("utf-8")
-                ]
-                print(f"Matched keywords for multi chain: {matching_keywords}")
-                if given_type == solana_tag:
-                    given_type = multichain_tag
-                else:
-                    given_type = invalid_tag
-                    print(f"Found other chain [From {item}]")
-                break
-
-    else:
-        print("Repo data not found")
-        given_type = invalid_tag
-
+                given_type = invalid_tag
+                print(f"[FAIL] Other chain found from {item}, not Solana.")
+            break
     return given_type
+
 
 
 total_time = 0.0
 
-for idx, repo in enumerate(repos[continue_num:]):
-    start_time = time.time()
-    try:
-        given_type = identify(repo)
-        row = column_letter + str(idx + continue_num + 2)
-        worksheet.update_values(row, [[given_type]])
-        print(
-            f"Updated {column_letter}{continue_num+idx+2} with {given_type}")
-    except Exception as e:
-        print("Error in loop: ", e)
-        continue
+if EMPTY_CELL_FILL_MODE:
+    all_tag_cells = worksheet.get_col(ord(column_letter) - ord('A') + 1) # Changing column letter to its index
+    empty_cells_indices = [i for i, value in enumerate(all_tag_cells) if not value]
+    print(f"EMPTY CELL MODE ON\n{len(empty_cells_indices)} EMPTY CELLS \n\n")
 
-    end_time = time.time()
-    time_taken = end_time - start_time
-    total_time += time_taken
-    avg_time = (total_time / (idx + 1)) * len(repos[continue_num:]) - (idx + 1)
-    print(f"Estimated time left {round(avg_time / 60 / 60, 3)}h\n")
-    
+    for cell_index in empty_cells_indices:
+        print("Filling Cell..", cell_index)
+        start_time = time.time()
+        try:
+            given_type = identify(repos[cell_index - 2], f"{column_letter}{cell_index}")
+            row = column_letter + str(cell_index)
+            worksheet.update_values(row, [[given_type]])
+            print(
+                f"Updated {column_letter}{cell_index} with {given_type}"
+                )
+        except Exception as e:
+            print("Error in loop (CELL FILL): ", e)
+            continue
 
-print("Finished.")
+        end_time = time.time()
+        time_taken = end_time - start_time
+        total_time += time_taken
+    print("Finished")
+
+else:
+    for idx, repo in enumerate(repos[continue_num:]):
+        start_time = time.time()
+        try:
+            given_type = identify(repo, f"{column_letter}{continue_num+idx+2}")
+            row = column_letter + str(idx + continue_num + 2)  # +2 because index starts with zero and first value is the label
+            worksheet.update_values(row, [[given_type]])
+            print(
+                f"Updated {column_letter}{continue_num+idx+2} with {given_type}")
+        except Exception as e:
+            print("Error in loop: ", e)
+            continue
+
+        end_time = time.time()
+        time_taken = end_time - start_time
+        total_time += time_taken
+        avg_time = (total_time / (idx + 1)) * len(repos[continue_num:]) - (idx + 1)
+        print(f"Estimated time left {round(avg_time / 60 / 60, 3)}h\n")
+    print("Finished")
+
