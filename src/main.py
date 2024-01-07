@@ -76,6 +76,9 @@ other_keywords = [
     "metamask",
     "aptos",
     "brave-wallet",
+    "polkadot",
+    "'web3'",
+    "terra-money"
 ]
 
 ignore_dirs = [
