@@ -200,10 +200,12 @@ def identify(repo_url: str, cell: str) -> str:
 
 
 total_time = 0.0
-
+filled = 0
 if EMPTY_CELL_FILL_MODE:
     all_tag_cells = worksheet.get_col(ord(column_letter) - ord('A') + 1) # Changing column letter to its index
-    empty_cells_indices = [i for i, value in enumerate(all_tag_cells) if not value]
+    empty_cells_indices = [i+1 for i, value in enumerate(all_tag_cells) if not value]
+
+    print("Some Empty Cells For Checks :" ,empty_cells_indices[:5])
     print(f"EMPTY CELL MODE ON\n{len(empty_cells_indices)} EMPTY CELLS \n\n")
 
     for cell_index in empty_cells_indices:
@@ -214,7 +216,7 @@ if EMPTY_CELL_FILL_MODE:
             row = column_letter + str(cell_index)
             worksheet.update_values(row, [[given_type]])
             print(
-                f"Updated {column_letter}{cell_index} with {given_type}"
+                f"Updated {column_letter}{cell_index} with {given_type} [{filled+1}/{len(empty_cells_indices)}]"
                 )
         except Exception as e:
             print("Error in loop (CELL FILL): ", e)
@@ -223,6 +225,7 @@ if EMPTY_CELL_FILL_MODE:
         end_time = time.time()
         time_taken = end_time - start_time
         total_time += time_taken
+        filled += 1
     print("Finished")
 
 else:
