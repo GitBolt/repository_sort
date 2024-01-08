@@ -6,6 +6,8 @@ import pygsheets
 from github import Github
 from dotenv import load_dotenv
 import time
+import sys
+
 
 load_dotenv()
 
@@ -14,7 +16,7 @@ github_key2 = os.getenv('GH_KEY2')
 github_key3 = os.getenv('GH_KEY3')
 
 EMPTY_CELL_FILL_MODE = True # True if we want to fill up cells that were missed by the script
-name = "Jan Audit" # File name
+name = "Jan Audit 2" # File name
 sheet_title = "Sheet1" # Sheet name
 continue_num = 19041 # Start at the specified repo index from CSV (to pause/resume)
 
@@ -112,6 +114,7 @@ def identify(repo_url: str, cell: str) -> str:
             if "API rate" in str(e):
                 print(f"You got rate limited with key {key}, trying next key now")
             else:
+                print(e)
                 print("[PRIVATE] Get repo failed")
                 given_type = private_tag
                 return given_type
@@ -197,54 +200,56 @@ def identify(repo_url: str, cell: str) -> str:
             break
     return given_type
 
+all_tag_cells = worksheet.get_col(ord(column_letter) - ord('A') + 1) # Changing column letter to its index
+empty_cells_indices = [i+1 for i, value in enumerate(all_tag_cells) if not value]
 
+print("Length Of Empty Cell Indices: ", len(empty_cells_indices))
 
-total_time = 0.0
-filled = 0
-if EMPTY_CELL_FILL_MODE:
-    all_tag_cells = worksheet.get_col(ord(column_letter) - ord('A') + 1) # Changing column letter to its index
-    empty_cells_indices = [i+1 for i, value in enumerate(all_tag_cells) if not value]
+def run(start_index=0):
+    total_time = 0.0
+    filled = 0
+    if EMPTY_CELL_FILL_MODE:
+        print("Some Empty Cells For Checks :" ,empty_cells_indices[:5])
+        print(f"EMPTY CELL MODE ON\n{len(empty_cells_indices)} EMPTY CELLS \n\n")
+        print("Starting index: ", start_index)
+        for cell_index in empty_cells_indices[start_index:]:
+            print("Filling Cell..", cell_index)
+            start_time = time.time()
+            try:
+                given_type = identify(repos[cell_index - 2], f"{column_letter}{cell_index}")
+                row = column_letter + str(cell_index)
+                worksheet.update_values(row, [[given_type]])
+                print(
+                    f"Updated {column_letter}{cell_index} with {given_type} [{filled+1}/{len(empty_cells_indices)}]"
+                    )
+            except Exception as e:
+                print("Error in loop (CELL FILL): ", e)
+                continue
 
-    print("Some Empty Cells For Checks :" ,empty_cells_indices[:5])
-    print(f"EMPTY CELL MODE ON\n{len(empty_cells_indices)} EMPTY CELLS \n\n")
+            end_time = time.time()
+            time_taken = end_time - start_time
+            total_time += time_taken
+            filled += 1
+        print("Finished")
 
-    for cell_index in empty_cells_indices:
-        print("Filling Cell..", cell_index)
-        start_time = time.time()
-        try:
-            given_type = identify(repos[cell_index - 2], f"{column_letter}{cell_index}")
-            row = column_letter + str(cell_index)
-            worksheet.update_values(row, [[given_type]])
-            print(
-                f"Updated {column_letter}{cell_index} with {given_type} [{filled+1}/{len(empty_cells_indices)}]"
-                )
-        except Exception as e:
-            print("Error in loop (CELL FILL): ", e)
-            continue
+    else:
+        for idx, repo in enumerate(repos[continue_num:]):
+            start_time = time.time()
+            try:
+                given_type = identify(repo, f"{column_letter}{continue_num+idx+2}")
+                row = column_letter + str(idx + continue_num + 2)  # +2 because index starts with zero and first value is the label
+                worksheet.update_values(row, [[given_type]])
+                print(
+                    f"Updated {column_letter}{continue_num+idx+2} with {given_type}")
+            except Exception as e:
+                print("Error in loop: ", e)
+                continue
 
-        end_time = time.time()
-        time_taken = end_time - start_time
-        total_time += time_taken
-        filled += 1
-    print("Finished")
+            end_time = time.time()
+            time_taken = end_time - start_time
+            total_time += time_taken
+            avg_time = (total_time / (idx + 1)) * len(repos[continue_num:]) - (idx + 1)
+            print(f"Estimated time left {round(avg_time / 60 / 60, 3)}h\n")
+        print("Finished")
 
-else:
-    for idx, repo in enumerate(repos[continue_num:]):
-        start_time = time.time()
-        try:
-            given_type = identify(repo, f"{column_letter}{continue_num+idx+2}")
-            row = column_letter + str(idx + continue_num + 2)  # +2 because index starts with zero and first value is the label
-            worksheet.update_values(row, [[given_type]])
-            print(
-                f"Updated {column_letter}{continue_num+idx+2} with {given_type}")
-        except Exception as e:
-            print("Error in loop: ", e)
-            continue
-
-        end_time = time.time()
-        time_taken = end_time - start_time
-        total_time += time_taken
-        avg_time = (total_time / (idx + 1)) * len(repos[continue_num:]) - (idx + 1)
-        print(f"Estimated time left {round(avg_time / 60 / 60, 3)}h\n")
-    print("Finished")
-
+run(int(sys.argv[1]))
