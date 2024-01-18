@@ -130,7 +130,7 @@ def identify(repo_url: str, cell: str) -> str:
 
     if repo_data == None:
         print("[INVALID] Repo Empty")
-        return
+        return given_type
 
     try:
         print("Trying to get content...")
